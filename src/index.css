@@ -12,4 +12,26 @@
   body {
     @apply bg-polis-bg text-slate-900 antialiased;
   }
+
+  .markdown-body h1 {
+    @apply text-4xl font-black uppercase italic tracking-tighter text-slate-900 mb-8 mt-12 first:mt-0;
+  }
+  .markdown-body h2 {
+    @apply text-2xl font-black uppercase italic tracking-tighter text-slate-900 mb-6 mt-10;
+  }
+  .markdown-body h3 {
+    @apply text-xl font-black uppercase italic tracking-tighter text-slate-900 mb-4 mt-8;
+  }
+  .markdown-body p {
+    @apply text-slate-600 leading-relaxed mb-4 font-medium;
+  }
+  .markdown-body ul {
+    @apply list-disc list-inside mb-4 space-y-2 text-slate-600 font-medium;
+  }
+  .markdown-body strong {
+    @apply text-slate-900 font-black;
+  }
+  .markdown-body blockquote {
+    @apply border-l-4 border-polis-copper pl-4 italic text-slate-500 mb-4;
+  }
 }
