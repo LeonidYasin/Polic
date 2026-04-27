@@ -1,0 +1,360 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 0. Default Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /_system_/{docId} {
+      allow read: if isAuthenticated();
+    }
+
+    // Phase 3: Primitive Definitions (Helper Functions)
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isAuthenticated(); // Relaxed for better onboarding/heartbeat experience
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email in ["globalleonstube@gmail.com", "leonidyasin@gmail.com", "LeonidYasin@gmail.com"] ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         getUserData(request.auth.uid).role == 'admin')
+      );
+    }
+
+    function isMediator() {
+      return isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         getUserData(request.auth.uid).role == 'mediator')
+      );
+    }
+
+    // Validation Blueprints
+    
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'role']) &&
+             data.uid is string &&
+             data.displayName is string && data.displayName.size() < 100 &&
+             data.role is string &&
+             (!('email' in data) || (data.email is string && data.email.size() < 256)) &&
+             (!('meritPoints' in data) || data.meritPoints is number) &&
+             (!('successfulDeeds' in data) || data.successfulDeeds is number) &&
+             (!('totalAssignments' in data) || data.totalAssignments is number) &&
+             (!('socialShieldStatus' in data) || data.socialShieldStatus in ['inactive', 'active']) &&
+             (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() < 200000)) &&
+             (!('isAI' in data) || data.isAI is bool) &&
+             (!('directive' in data) || (data.directive is string && data.directive.size() < 5000)) &&
+             (!('insights' in data) || (data.insights is string && data.insights.size() < 5000)) &&
+             (!('activityLog' in data) || (data.activityLog is list && data.activityLog.size() <= 100)) &&
+             (!('badges' in data) || (data.badges is list && data.badges.size() <= 50)) &&
+             (!('categoryStats' in data) || data.categoryStats is map) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['userId', 'title', 'message', 'type', 'read']) &&
+             isValidId(data.userId) &&
+             data.title is string && data.title.size() < 100 &&
+             data.message is string && data.message.size() < 1000 &&
+             data.type in ['task', 'petition', 'agora', 'badge', 'system'] &&
+             data.read is bool &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidPetition(data) {
+      return data.keys().hasAll(['uid', 'path', 'message', 'status']) &&
+             isValidId(data.uid) &&
+             data.path in ['master', 'philosopher', 'patron'] &&
+             data.message is string && data.message.size() < 5000 &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['title', 'reward', 'category', 'description', 'status', 'mediatorUid']) &&
+             data.title is string && data.title.size() < 200 &&
+             data.reward is number && data.reward >= 0 &&
+             data.category is string &&
+             data.description is string && data.description.size() < 5000 &&
+             data.status in ['open', 'claimed', 'completed'] &&
+             isValidId(data.mediatorUid) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['uid', 'author', 'text']) &&
+             isValidId(data.uid) &&
+             data.author is string && data.author.size() < 100 &&
+             data.text is string && data.text.size() < 2000 &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidProposal(data) {
+      return data.keys().hasAll(['uid', 'text', 'votes', 'status']) &&
+             isValidId(data.uid) &&
+             data.text is string && data.text.size() < 2000 &&
+             data.votes is number &&
+             data.status in ['active', 'closed'] &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidConfig(data) {
+      return (!('arionInstruction' in data) || (data.arionInstruction is string && data.arionInstruction.size() < 10000)) &&
+             (!('arionTemperature' in data) || (data.arionTemperature is number && data.arionTemperature >= 0 && data.arionTemperature <= 2)) &&
+             (!('maintenanceMode' in data) || data.maintenanceMode is bool);
+    }
+
+    function isValidAiTrigger(data) {
+      return data.keys().hasAll(['event', 'threshold', 'agentRole', 'active']) &&
+             data.event is string &&
+             data.threshold is number &&
+             data.agentRole is string &&
+             data.active is bool &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['title', 'ownerUid', 'status']) &&
+             data.title is string && data.title.size() < 200 &&
+             isValidId(data.ownerUid) &&
+             data.status in ['draft', 'proposed', 'active', 'completed', 'halted'] &&
+             (!('slogan' in data) || data.slogan is string) &&
+             (!('objective' in data) || data.objective is string) &&
+             (!('description' in data) || data.description is string) &&
+             (!('meritBudget' in data) || data.meritBudget is number) &&
+             (!('techStack' in data) || data.techStack is list) &&
+             (!('positions' in data) || data.positions is list) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidProjectMember(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'joinedAt']) &&
+             isValidId(data.uid) &&
+             data.displayName is string &&
+             (!('roleInProject' in data) || data.roleInProject is string) &&
+             data.joinedAt is timestamp;
+    }
+
+    function isValidDirectMessage(data) {
+      return data.keys().hasAll(['participants', 'senderId', 'text', 'read']) &&
+             data.participants is list && data.participants.size() == 2 &&
+             data.senderId is string &&
+             data.text is string && data.text.size() < 5000 &&
+             data.read is bool &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    // Rules Definitions
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      
+      match /votes/{proposalId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && 
+                         !exists(/databases/$(database)/documents/users/$(userId)/votes/$(proposalId)) &&
+                         getAfter(/databases/$(database)/documents/proposals/$(proposalId)).data.votes == get(/databases/$(database)/documents/proposals/$(proposalId)).data.votes + 1;
+      }
+
+      allow create: if isVerified() && isValidId(userId) && (
+        (isOwner(userId) && isValidUserProfile(incoming()) && incoming().role == 'applicant' && incoming().uid == userId) || 
+        (isAdmin() && isValidUserProfile(incoming()))
+      );
+      
+      allow update: if isVerified() && isValidId(userId) && (
+        isAdmin() || (
+          isOwner(userId) && 
+          isValidUserProfile(incoming()) &&
+          incoming().uid == existing().uid &&
+          incoming().role == existing().role &&
+          (
+            // Action: Edit Profile
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'avatarUrl', 'socialShieldStatus'])
+          )
+        )
+      );
+    }
+
+    match /profiles/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isVerified() && isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notifId} {
+      allow read: if isOwner(existing().userId) || isAdmin();
+      allow list: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      allow create: if isVerified() && isValidNotification(incoming()) && 
+                       (isOwner(incoming().userId) || isMediator());
+      
+      allow update: if isVerified() && (
+        (isOwner(existing().userId) && incoming().diff(existing()).affectedKeys().hasOnly(['read'])) ||
+        isAdmin()
+      );
+      
+      allow delete: if isVerified() && (isOwner(existing().userId) || isAdmin());
+    }
+
+    match /petitions/{petitionId} {
+      allow read: if isAuthenticated() && (isOwner(existing().uid) || isMediator());
+      allow list: if isMediator();
+      
+      allow create: if isVerified() && isValidPetition(incoming()) && 
+                       isOwner(incoming().uid) &&
+                       incoming().status == 'pending';
+      
+      allow update: if isVerified() && (
+        isAdmin() ||
+        (isMediator() && incoming().status in ['approved', 'rejected'] && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    match /global_tasks/{taskId} {
+      allow read: if isAuthenticated();
+      
+      allow create: if isVerified() && isMediator() && isValidTask(incoming()) &&
+                       incoming().mediatorUid == request.auth.uid &&
+                       incoming().status == 'open';
+      
+      allow update: if isVerified() && (
+        isAdmin() ||
+        (isMediator() && existing().mediatorUid == request.auth.uid && isValidTask(incoming())) ||
+        (
+          // Action: Claim Task
+          existing().status == 'open' &&
+          incoming().status == 'claimed' &&
+          (incoming().claimedByUid == request.auth.uid || incoming().simulated == true) &&
+          incoming().diff(existing()).affectedKeys().hasAll(['status', 'claimedByUid'])
+        ) ||
+        (
+          // Action: Complete Task
+          (isMediator() || isAdmin()) &&
+          incoming().status == 'completed' &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'completedAt'])
+        )
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow read, list: if isAuthenticated();
+      
+      allow create: if isVerified() && isValidMessage(incoming()) && (
+                       incoming().uid == request.auth.uid || isAdmin()
+                    );
+      
+      allow delete: if isAdmin();
+    }
+
+    match /proposals/{proposalId} {
+      allow read: if isAuthenticated();
+      
+      allow create: if isVerified() && isValidProposal(incoming()) &&
+                       incoming().status == 'active' &&
+                       incoming().uid == request.auth.uid;
+      
+      allow update: if isVerified() && (
+        isAdmin() ||
+        (
+          // Action: Vote
+          incoming().diff(existing()).affectedKeys().hasOnly(['votes']) &&
+          incoming().votes == (existing().get('votes', 0) + 1) &&
+          existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/votes/$(proposalId))
+        )
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    match /system_config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidConfig(incoming());
+    }
+
+    match /ai_triggers/{triggerId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin() && isValidAiTrigger(incoming());
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAuthenticated();
+      allow list: if isAuthenticated();
+      
+      allow create: if isVerified() && isValidProject(incoming()) && 
+                       incoming().ownerUid == request.auth.uid &&
+                       incoming().status in ['draft', 'proposed', 'active'];
+                       
+      allow update: if isVerified() && (
+        isAdmin() ||
+        (existing().ownerUid == request.auth.uid && isValidProject(incoming())) ||
+        (
+           // Joining Logic: handled by subcollection usually, 
+           // but maybe we want to track member count or similar here.
+           true
+        )
+      );
+      
+      allow delete: if isAdmin();
+
+      match /members/{memberId} {
+        allow read: if isAuthenticated();
+        allow create: if isVerified() && isValidProjectMember(incoming()) && 
+                         incoming().uid == request.auth.uid;
+        allow update: if isAdmin() || (isOwner(existing().uid) && isValidProjectMember(incoming()));
+        allow delete: if isAdmin() || isOwner(existing().uid);
+      }
+    }
+
+    match /direct_messages/{messageId} {
+      allow read, list: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      
+      allow create: if isVerified() && isValidDirectMessage(incoming()) && 
+                       request.auth.uid in incoming().participants &&
+                       (incoming().senderId == request.auth.uid || 
+                        (exists(/databases/$(database)/documents/users/$(incoming().senderId)) && 
+                         getUserData(incoming().senderId).isAI == true) ||
+                        incoming().senderId.startsWith('founding_') ||
+                        incoming().senderId.startsWith('synth_'));
+      
+      allow update: if isVerified() && (
+        (request.auth.uid in existing().participants && incoming().diff(existing()).affectedKeys().hasOnly(['read'])) ||
+        isAdmin()
+      );
+      
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,225 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Information about a Polis citizen or applicant.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["applicant", "participant", "actor", "architect", "master", "mediator", "admin"] },
+        "meritPoints": { "type": "number" },
+        "successfulDeeds": { "type": "number" },
+        "totalAssignments": { "type": "number" },
+        "badges": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "avatarUrl": { "type": "string" },
+        "categoryStats": { "type": "object" },
+        "socialShieldStatus": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isAI": { "type": "boolean" },
+        "directive": { "type": "string" },
+        "insights": { "type": "string" },
+        "activityLog": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "AiTrigger": {
+      "title": "AiTrigger",
+      "description": "Autonomous triggers for Arion.",
+      "type": "object",
+      "properties": {
+        "event": { "type": "string" },
+        "threshold": { "type": "number" },
+        "agentRole": { "type": "string" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for a specific user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["task", "petition", "agora", "badge", "system"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "read", "createdAt"]
+    },
+    "Petition": {
+      "title": "Petition",
+      "description": "An application for citizenship in the Polis.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "path": { "type": "string", "enum": ["master", "philosopher", "patron"] },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "path", "message", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A mission issued by a Mediator for Citizens.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "reward": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "claimed", "completed"] },
+        "mediatorUid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "reward", "category", "description", "status", "mediatorUid"]
+    },
+    "SystemConfig": {
+      "title": "SystemConfig",
+      "description": "Global parameters for the application",
+      "type": "object",
+      "properties": {
+        "arionInstruction": { "type": "string" },
+        "arionTemperature": { "type": "number" },
+        "maintenanceMode": { "type": "boolean" }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message in the Agora chat.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "author": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "author", "text", "createdAt"]
+    },
+    "Proposal": {
+      "title": "Proposal",
+      "description": "A proposal in the Agora for voting.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "author": { "type": "string" },
+        "text": { "type": "string" },
+        "votes": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "closed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "text", "votes", "status", "createdAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A commercial or system project (startup) within the Polis.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "slogan": { "type": "string" },
+        "objective": { "type": "string" },
+        "description": { "type": "string" },
+        "ownerUid": { "type": "string" },
+        "meritBudget": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "proposed", "active", "completed", "halted"] },
+        "techStack": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "ownerUid", "status"]
+    },
+    "ProjectMember": {
+      "title": "ProjectMember",
+      "description": "A member associated with a project.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "roleInProject": { "type": "string" },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "joinedAt"]
+    },
+    "DirectMessage": {
+      "title": "DirectMessage",
+      "description": "Private direct message between two participants.",
+      "type": "object",
+      "properties": {
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["participants", "senderId", "text", "read"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "Private user profiles."
+    },
+    "/users/{uid}/votes/{proposalId}": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "votedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "description": "Recorded votes of a user to prevent double voting."
+    },
+    "/profiles/{uid}": {
+      "schema": "UserProfile",
+      "description": "Public user profiles (subset of UserProfile)."
+    },
+    "/petitions/{petitionId}": {
+      "schema": "Petition",
+      "description": "Citizen applications."
+    },
+    "/global_tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Public task registry managed by Mediators."
+    },
+    "/system_config/{configId}": {
+      "schema": "SystemConfig",
+      "description": "Global system settings, controllable by Admins."
+    },
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Agora chat messages."
+    },
+    "/proposals/{proposalId}": {
+      "schema": "Proposal",
+      "description": "Agora voting proposals."
+    },
+    "/notifications/{notifId}": {
+      "schema": "Notification",
+      "description": "User notifications."
+    },
+    "/ai_triggers/{triggerId}": {
+      "schema": "AiTrigger",
+      "description": "Autonomous AI system triggers."
+    },
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Commercial and system projects."
+    },
+    "/projects/{projectId}/members/{memberId}": {
+      "schema": "ProjectMember",
+      "description": "Project membership records."
+    },
+    "/direct_messages/{messageId}": {
+      "schema": "DirectMessage",
+      "description": "Direct messages between citizens."
+    }
+  }
+}

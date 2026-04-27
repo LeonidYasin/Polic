@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --color-polis-green: #064e3b;
+  --color-polis-copper: #b45309;
+  --color-polis-bg: #f8fafc;
+  
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-polis-bg text-slate-900 antialiased;
+  }
+}
